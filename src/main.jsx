@@ -8,14 +8,17 @@ const SUPABASE_URL =
 const SUPABASE_KEY =
   import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
-const supabase = createClient(
-  SUPABASE_URL,
-  SUPABASE_KEY
-);
+const supabase =
+  SUPABASE_URL && SUPABASE_KEY
+    ? createClient(
+        SUPABASE_URL,
+        SUPABASE_KEY
+      )
+    : null;
 
 const demoLocations = [
   {
-    id: 1,
+    id: "demo-1",
     title: "Патриаршие пруды",
     description:
       "Атмосферное место для прогулок и красивых кадров.",
@@ -26,7 +29,7 @@ const demoLocations = [
     tags: ["прогулка", "свидание", "фото"],
   },
   {
-    id: 2,
+    id: "demo-2",
     title: "Зарядье",
     description:
       "Панорамы, вечерний свет и красивые виды.",
@@ -37,7 +40,7 @@ const demoLocations = [
     tags: ["вид", "закат", "город"],
   },
   {
-    id: 3,
+    id: "demo-3",
     title: "Парк Горького",
     description:
       "Зелень, вода, прогулки и много пространства.",
@@ -62,20 +65,29 @@ function App() {
   const [selectedLocation, setSelectedLocation] =
     React.useState(null);
 
+  const [likedLocations, setLikedLocations] =
+    React.useState({});
+
   React.useEffect(() => {
     loadLocations();
   }, []);
 
   async function loadLocations() {
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
     try {
-      const { data, error } = await supabase
-        .from("locations")
-        .select(
-          "id, created_at, name, description, emoji, moods, tags, rating, image_url, user_added"
-        )
-        .order("created_at", {
-          ascending: false,
-        });
+      const { data, error } =
+        await supabase
+          .from("locations")
+          .select(
+            "id, created_at, name, description, emoji, moods, tags, rating, image_url, user_added"
+          )
+          .order("created_at", {
+            ascending: false,
+          });
 
       if (error) {
         console.error(
@@ -87,9 +99,12 @@ function App() {
         return;
       }
 
-      if (data && data.length > 0) {
-        const preparedLocations = data.map(
-          (item) => ({
+      if (
+        Array.isArray(data) &&
+        data.length > 0
+      ) {
+        const prepared =
+          data.map((item) => ({
             id: item.id,
 
             title:
@@ -114,12 +129,9 @@ function App() {
               Array.isArray(item.tags)
                 ? item.tags
                 : [],
-          })
-        );
+          }));
 
-        setLocations(
-          preparedLocations
-        );
+        setLocations(prepared);
       }
     } catch (error) {
       console.error(
@@ -130,6 +142,22 @@ function App() {
       setLoading(false);
     }
   }
+
+  function toggleLike(id) {
+    setLikedLocations((current) => ({
+      ...current,
+      [id]: !current[id],
+    }));
+  }
+
+  function isLiked(id) {
+    return Boolean(likedLocations[id]);
+  }
+
+  const likesCount =
+    Object.values(likedLocations).filter(
+      Boolean
+    ).length;
 
   return (
     <>
@@ -168,7 +196,7 @@ function App() {
         .header {
           position: sticky;
           top: 0;
-          z-index: 10;
+          z-index: 20;
 
           display: flex;
           align-items: center;
@@ -176,12 +204,8 @@ function App() {
 
           padding: 16px;
 
-          background: rgba(
-            245,
-            243,
-            239,
-            0.94
-          );
+          background:
+            rgba(245,243,239,.94);
 
           backdrop-filter: blur(16px);
 
@@ -204,20 +228,19 @@ function App() {
         .avatar {
           width: 42px;
           height: 42px;
+
           border: 0;
           border-radius: 50%;
+
           background: #d8cec1;
           color: #292621;
+
           font-weight: 800;
           cursor: pointer;
         }
 
         .content {
-          width: min(
-            760px,
-            100%
-          );
-
+          width: min(760px, 100%);
           margin: 0 auto;
           padding: 18px 16px;
         }
@@ -254,11 +277,7 @@ function App() {
           margin: 12px 0;
 
           font-size:
-            clamp(
-              44px,
-              11vw,
-              76px
-            );
+            clamp(44px, 11vw, 76px);
 
           line-height: .88;
           letter-spacing: -4px;
@@ -314,8 +333,6 @@ function App() {
           box-shadow:
             0 10px 30px
             rgba(0,0,0,.05);
-
-          cursor: pointer;
         }
 
         .imageWrap {
@@ -342,10 +359,48 @@ function App() {
           border-radius: 999px;
 
           background:
-            rgba(255,255,255,.92);
+            rgba(255,255,255,.94);
 
           font-size: 11px;
           font-weight: 800;
+        }
+
+        .likeButton {
+          position: absolute;
+
+          left: 12px;
+          top: 12px;
+
+          width: 42px;
+          height: 42px;
+
+          display: grid;
+          place-items: center;
+
+          border: 0;
+          border-radius: 50%;
+
+          background:
+            rgba(255,255,255,.94);
+
+          box-shadow:
+            0 5px 18px
+            rgba(0,0,0,.12);
+
+          font-size: 21px;
+
+          cursor: pointer;
+
+          transition:
+            transform .15s ease;
+        }
+
+        .likeButton:active {
+          transform: scale(.88);
+        }
+
+        .likeButton.liked {
+          color: #e54848;
         }
 
         .cardBody {
@@ -407,8 +462,14 @@ function App() {
           font-size: 10px;
         }
 
+        .cardActions {
+          display: flex;
+          gap: 8px;
+        }
+
         .openButton {
-          width: 100%;
+          flex: 1;
+
           min-height: 43px;
 
           border: 0;
@@ -419,6 +480,28 @@ function App() {
 
           font-weight: 700;
           cursor: pointer;
+        }
+
+        .smallLike {
+          width: 48px;
+
+          min-height: 43px;
+
+          border: 0;
+          border-radius: 13px;
+
+          background: #f0ece6;
+
+          color: #777169;
+
+          font-size: 20px;
+
+          cursor: pointer;
+        }
+
+        .smallLike.liked {
+          color: #e54848;
+          background: #fae8e8;
         }
 
         .profile {
@@ -459,8 +542,41 @@ function App() {
         }
 
         .profileCard p {
-          margin: 0;
+          margin: 0 0 22px;
           color: #858078;
+        }
+
+        .profileStats {
+          display: grid;
+
+          grid-template-columns:
+            repeat(3, 1fr);
+
+          gap: 8px;
+        }
+
+        .stat {
+          padding: 14px 6px;
+
+          border-radius: 17px;
+
+          background: #f5f3ef;
+        }
+
+        .stat strong {
+          display: block;
+
+          font-size: 21px;
+        }
+
+        .stat span {
+          display: block;
+
+          margin-top: 4px;
+
+          color: #8a837b;
+
+          font-size: 10px;
         }
 
         .bottomNav {
@@ -550,10 +666,7 @@ function App() {
         .modalCard {
           position: relative;
 
-          width: min(
-            620px,
-            100%
-          );
+          width: min(620px,100%);
 
           max-height: 90vh;
 
@@ -589,6 +702,7 @@ function App() {
             rgba(255,255,255,.95);
 
           font-size: 24px;
+
           cursor: pointer;
         }
 
@@ -596,8 +710,17 @@ function App() {
           padding: 20px;
         }
 
+        .modalHeader {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+
+          gap: 12px;
+        }
+
         .modalBody h2 {
           margin: 7px 0;
+
           font-size: 28px;
         }
 
@@ -606,9 +729,31 @@ function App() {
           line-height: 1.55;
         }
 
+        .modalLike {
+          flex-shrink: 0;
+
+          width: 48px;
+          height: 48px;
+
+          border: 0;
+          border-radius: 50%;
+
+          background: #f0ece6;
+
+          font-size: 22px;
+
+          cursor: pointer;
+        }
+
+        .modalLike.liked {
+          color: #e54848;
+          background: #fae8e8;
+        }
+
         .modalTags {
           display: flex;
           flex-wrap: wrap;
+
           gap: 7px;
         }
 
@@ -680,108 +825,168 @@ function App() {
               </h2>
 
               {loading ? (
+
                 <div className="loading">
-                  Загружаем локации из Supabase…
+                  Загружаем локации
+                  из Supabase…
                 </div>
+
               ) : (
 
                 <div className="grid">
 
                   {locations.map(
-                    (location) => (
+                    (location) => {
 
-                      <article
-                        className="card"
-                        key={location.id}
-                        onClick={() =>
-                          setSelectedLocation(
-                            location
-                          )
-                        }
-                      >
+                      const liked =
+                        isLiked(
+                          location.id
+                        );
 
-                        <div className="imageWrap">
+                      return (
+                        <article
+                          className="card"
+                          key={location.id}
+                        >
 
-                          <img
-                            src={location.image}
-                            alt={location.title}
-                            onError={(event) => {
-                              event.currentTarget.src =
-                                demoLocations[0].image;
-                            }}
-                          />
+                          <div className="imageWrap">
 
-                          {location.rating && (
-                            <div className="rating">
-                              ★{" "}
-                              {location.rating}
-                            </div>
-                          )}
+                            <img
+                              src={
+                                location.image
+                              }
+                              alt={
+                                location.title
+                              }
+                              onError={(
+                                event
+                              ) => {
+                                event.currentTarget.src =
+                                  demoLocations[0]
+                                    .image;
+                              }}
+                            />
 
-                        </div>
+                            <button
+                              className={
+                                liked
+                                  ? "likeButton liked"
+                                  : "likeButton"
+                              }
+                              onClick={() =>
+                                toggleLike(
+                                  location.id
+                                )
+                              }
+                              aria-label={
+                                liked
+                                  ? "Убрать лайк"
+                                  : "Поставить лайк"
+                              }
+                            >
+                              {liked
+                                ? "♥"
+                                : "♡"}
+                            </button>
 
-                        <div className="cardBody">
-
-                          <div className="cardTop">
-
-                            <span className="emoji">
-                              {location.emoji ||
-                                "📍"}
-                            </span>
-
-                            <span className="tag">
-                              локация
-                            </span>
+                            {location.rating && (
+                              <div className="rating">
+                                ★{" "}
+                                {
+                                  location.rating
+                                }
+                              </div>
+                            )}
 
                           </div>
 
-                          <h3>
-                            {location.title}
-                          </h3>
+                          <div className="cardBody">
 
-                          <p>
-                            {location.description}
-                          </p>
+                            <div className="cardTop">
 
-                          {location.tags.length >
-                            0 && (
+                              <span className="emoji">
+                                {
+                                  location.emoji ||
+                                  "📍"
+                                }
+                              </span>
 
-                            <div className="tags">
-
-                              {location.tags
-                                .slice(0, 4)
-                                .map(
-                                  (tag) => (
-                                    <span
-                                      key={tag}
-                                    >
-                                      #{tag}
-                                    </span>
-                                  )
-                                )}
+                              <span className="tag">
+                                локация
+                              </span>
 
                             </div>
 
-                          )}
+                            <h3>
+                              {
+                                location.title
+                              }
+                            </h3>
 
-                          <button
-                            className="openButton"
-                            onClick={(event) => {
-                              event.stopPropagation();
+                            <p>
+                              {
+                                location.description
+                              }
+                            </p>
 
-                              setSelectedLocation(
-                                location
-                              );
-                            }}
-                          >
-                            Открыть →
-                          </button>
+                            {location.tags
+                              .length > 0 && (
 
-                        </div>
+                              <div className="tags">
 
-                      </article>
+                                {location.tags
+                                  .slice(0, 4)
+                                  .map(
+                                    (tag) => (
+                                      <span
+                                        key={tag}
+                                      >
+                                        #{tag}
+                                      </span>
+                                    )
+                                  )}
 
-                    )
+                              </div>
+
+                            )}
+
+                            <div className="cardActions">
+
+                              <button
+                                className="openButton"
+                                onClick={() =>
+                                  setSelectedLocation(
+                                    location
+                                  )
+                                }
+                              >
+                                Открыть →
+                              </button>
+
+                              <button
+                                className={
+                                  liked
+                                    ? "smallLike liked"
+                                    : "smallLike"
+                                }
+                                onClick={() =>
+                                  toggleLike(
+                                    location.id
+                                  )
+                                }
+                              >
+                                {liked
+                                  ? "♥"
+                                  : "♡"}
+                              </button>
+
+                            </div>
+
+                          </div>
+
+                        </article>
+                      );
+                    }
                   )}
 
                 </div>
@@ -809,6 +1014,40 @@ function App() {
                   Добро пожаловать
                   в мой профиль
                 </p>
+
+                <div className="profileStats">
+
+                  <div className="stat">
+                    <strong>
+                      {locations.length}
+                    </strong>
+
+                    <span>
+                      локации
+                    </span>
+                  </div>
+
+                  <div className="stat">
+                    <strong>
+                      {likesCount}
+                    </strong>
+
+                    <span>
+                      мои лайки
+                    </span>
+                  </div>
+
+                  <div className="stat">
+                    <strong>
+                      0
+                    </strong>
+
+                    <span>
+                      друзья
+                    </span>
+                  </div>
+
+                </div>
 
               </div>
 
@@ -887,27 +1126,64 @@ function App() {
               </button>
 
               <img
-                src={selectedLocation.image}
-                alt={selectedLocation.title}
+                src={
+                  selectedLocation.image
+                }
+                alt={
+                  selectedLocation.title
+                }
               />
 
               <div className="modalBody">
 
-                <div className="emoji">
-                  {selectedLocation.emoji ||
-                    "📍"}
+                <div className="modalHeader">
+
+                  <div>
+                    <div className="emoji">
+                      {
+                        selectedLocation.emoji ||
+                        "📍"
+                      }
+                    </div>
+
+                    <h2>
+                      {
+                        selectedLocation.title
+                      }
+                    </h2>
+
+                    {selectedLocation.rating && (
+                      <strong>
+                        ★{" "}
+                        {
+                          selectedLocation.rating
+                        }
+                      </strong>
+                    )}
+                  </div>
+
+                  <button
+                    className={
+                      isLiked(
+                        selectedLocation.id
+                      )
+                        ? "modalLike liked"
+                        : "modalLike"
+                    }
+                    onClick={() =>
+                      toggleLike(
+                        selectedLocation.id
+                      )
+                    }
+                  >
+                    {isLiked(
+                      selectedLocation.id
+                    )
+                      ? "♥"
+                      : "♡"}
+                  </button>
+
                 </div>
-
-                <h2>
-                  {selectedLocation.title}
-                </h2>
-
-                {selectedLocation.rating && (
-                  <strong>
-                    ★{" "}
-                    {selectedLocation.rating}
-                  </strong>
-                )}
 
                 <p>
                   {
