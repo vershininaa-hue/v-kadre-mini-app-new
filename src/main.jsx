@@ -170,12 +170,56 @@ function App() {
     }
   }
 
-  function toggleLike(id) {
-    setLikedLocations((current) => ({
-      ...current,
-      [id]: !current[id],
-    }));
+  async function toggleLike(id) {
+  const currentlyLiked = Boolean(likedLocations[id]);
+
+  // Сразу меняем сердечко на экране
+  setLikedLocations((current) => ({
+    ...current,
+    [id]: !currentlyLiked,
+  }));
+
+  if (!supabase) return;
+
+  const userId = "telegram-demo-user";
+
+  try {
+    if (currentlyLiked) {
+      const { error } = await supabase
+        .from("location_likes")
+        .delete()
+        .eq("location_id", id)
+        .eq("user_id", userId);
+
+      if (error) {
+        console.error("Ошибка удаления лайка:", error);
+
+        setLikedLocations((current) => ({
+          ...current,
+          [id]: true,
+        }));
+      }
+    } else {
+      const { error } = await supabase
+        .from("location_likes")
+        .insert({
+          location_id: id,
+          user_id: userId,
+        });
+
+      if (error) {
+        console.error("Ошибка сохранения лайка:", error);
+
+        setLikedLocations((current) => ({
+          ...current,
+          [id]: false,
+        }));
+      }
+    }
+  } catch (error) {
+    console.error("Ошибка лайка:", error);
   }
+}
 
   function isLiked(id) {
     return Boolean(likedLocations[id]);
