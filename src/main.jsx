@@ -65,6 +65,22 @@ function App() {
   const [selectedLocation, setSelectedLocation] =
     React.useState(null);
 
+  const [showAddLocation, setShowAddLocation] =
+  React.useState(false);
+
+const [newLocation, setNewLocation] =
+  React.useState({
+    name: "",
+    description: "",
+    emoji: "📍",
+    tags: "",
+    rating: "5",
+    image_url: "",
+  });
+
+const [savingLocation, setSavingLocation] =
+  React.useState(false);
+
   const [likedLocations, setLikedLocations] =
     React.useState({});
 
