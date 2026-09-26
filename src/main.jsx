@@ -69,8 +69,35 @@ function App() {
     React.useState({});
 
   React.useEffect(() => {
-    loadLocations();
-  }, []);
+  loadLocations();
+  loadLikes();
+}, []);
+
+  async function loadLikes() {
+  if (!supabase) return;
+
+  try {
+    const { data, error } = await supabase
+      .from("location_likes")
+      .select("location_id")
+      .eq("user_id", "telegram-demo-user");
+
+    if (error) {
+      console.error("Ошибка загрузки лайков:", error);
+      return;
+    }
+
+    const likes = {};
+
+    (data || []).forEach((item) => {
+      likes[item.location_id] = true;
+    });
+
+    setLikedLocations(likes);
+  } catch (error) {
+    console.error("Likes error:", error);
+  }
+}
 
   async function loadLocations() {
     if (!supabase) {
