@@ -186,6 +186,98 @@ const [savingLocation, setSavingLocation] =
     }
   }
 
+  async function addLocation() {
+  if (!supabase) {
+    alert("Supabase не подключён");
+    return;
+  }
+
+  if (!newLocation.name.trim()) {
+    alert("Напиши название места");
+    return;
+  }
+
+  setSavingLocation(true);
+
+  try {
+    const { data, error } = await supabase
+      .from("locations")
+      .insert({
+        name: newLocation.name.trim(),
+        description:
+          newLocation.description.trim() ||
+          "Красивое место для прогулки.",
+        emoji: newLocation.emoji || "📍",
+        tags: newLocation.tags
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+        rating:
+          Number(newLocation.rating) || 5,
+        image_url:
+          newLocation.image_url.trim() ||
+          demoLocations[0].image,
+        user_added: true,
+      })
+      .select()
+      .single();
+
+    if (error) {
+      console.error(
+        "Ошибка добавления:",
+        error
+      );
+
+      alert(
+        "Не удалось добавить локацию. Проверь консоль."
+      );
+
+      return;
+    }
+
+    const prepared = {
+      id: data.id,
+      title: data.name,
+      description: data.description,
+      image:
+        data.image_url ||
+        demoLocations[0].image,
+      rating: data.rating,
+      emoji: data.emoji || "📍",
+      tags: Array.isArray(data.tags)
+        ? data.tags
+        : [],
+    };
+
+    setLocations((current) => [
+      prepared,
+      ...current,
+    ]);
+
+    setNewLocation({
+      name: "",
+      description: "",
+      emoji: "📍",
+      tags: "",
+      rating: "5",
+      image_url: "",
+    });
+
+    setShowAddLocation(false);
+
+    alert("Локация добавлена ❤️");
+  } catch (error) {
+    console.error(
+      "Ошибка добавления локации:",
+      error
+    );
+
+    alert("Произошла ошибка");
+  } finally {
+    setSavingLocation(false);
+  }
+}
+
   async function toggleLike(id) {
   const currentlyLiked = Boolean(likedLocations[id]);
 
