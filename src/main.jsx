@@ -53,6 +53,19 @@ const demoLocations = [
 ];
 
 function App() {
+
+const inputStyle = {
+  width: "100%",
+  padding: "14px",
+  marginBottom: "10px",
+  border: "1px solid #e5e0d9",
+  borderRadius: "13px",
+  background: "#f8f6f2",
+  color: "#202020",
+  fontSize: "14px",
+  outline: "none",
+};
+  
   const [active, setActive] =
     React.useState("home");
 
@@ -1324,15 +1337,13 @@ const [savingLocation, setSavingLocation] =
           </button>
 
           <button
-            className="navButton plus"
-            onClick={() =>
-              alert(
-                "Добавление локации"
-              )
-            }
-          >
-            +
-          </button>
+  className="navButton plus"
+  onClick={() =>
+    setShowAddLocation(true)
+  }
+>
+  +
+</button>
 
           <button
             className={
@@ -1350,6 +1361,135 @@ const [savingLocation, setSavingLocation] =
 
         </nav>
 
+        {showAddLocation && (
+  <div
+    className="modal"
+    onClick={() =>
+      setShowAddLocation(false)
+    }
+  >
+    <div
+      className="modalCard"
+      onClick={(event) =>
+        event.stopPropagation()
+      }
+    >
+      <button
+        className="close"
+        onClick={() =>
+          setShowAddLocation(false)
+        }
+      >
+        ×
+      </button>
+
+      <div className="modalBody">
+
+        <h2>
+          Добавить локацию
+        </h2>
+
+        <input
+          placeholder="Название места"
+          value={newLocation.name}
+          onChange={(event) =>
+            setNewLocation({
+              ...newLocation,
+              name: event.target.value,
+            })
+          }
+          style={inputStyle}
+        />
+
+        <textarea
+          placeholder="Описание"
+          value={newLocation.description}
+          onChange={(event) =>
+            setNewLocation({
+              ...newLocation,
+              description:
+                event.target.value,
+            })
+          }
+          style={{
+            ...inputStyle,
+            minHeight: "90px",
+            resize: "vertical",
+          }}
+        />
+
+        <input
+          placeholder="Эмодзи, например 🌿"
+          value={newLocation.emoji}
+          onChange={(event) =>
+            setNewLocation({
+              ...newLocation,
+              emoji: event.target.value,
+            })
+          }
+          style={inputStyle}
+        />
+
+        <input
+          placeholder="Теги через запятую"
+          value={newLocation.tags}
+          onChange={(event) =>
+            setNewLocation({
+              ...newLocation,
+              tags: event.target.value,
+            })
+          }
+          style={inputStyle}
+        />
+
+        <input
+          placeholder="Ссылка на фото"
+          value={newLocation.image_url}
+          onChange={(event) =>
+            setNewLocation({
+              ...newLocation,
+              image_url:
+                event.target.value,
+            })
+          }
+          style={inputStyle}
+        />
+
+        <input
+          type="number"
+          min="1"
+          max="5"
+          step="0.1"
+          placeholder="Рейтинг"
+          value={newLocation.rating}
+          onChange={(event) =>
+            setNewLocation({
+              ...newLocation,
+              rating: event.target.value,
+            })
+          }
+          style={inputStyle}
+        />
+
+        <button
+          className="openButton"
+          onClick={addLocation}
+          disabled={savingLocation}
+          style={{
+            width: "100%",
+            marginTop: "8px",
+          }}
+        >
+          {savingLocation
+            ? "Сохраняем..."
+            : "Добавить локацию"}
+        </button>
+
+      </div>
+    </div>
+  </div>
+)}
+        
         {selectedLocation && (
 
           <div
