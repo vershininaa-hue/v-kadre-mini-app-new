@@ -2,18 +2,12 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import { createClient } from "@supabase/supabase-js";
 
-const SUPABASE_URL =
-  import.meta.env.VITE_SUPABASE_URL;
-
-const SUPABASE_KEY =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
 const supabase =
   SUPABASE_URL && SUPABASE_KEY
-    ? createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY
-      )
+    ? createClient(SUPABASE_URL, SUPABASE_KEY)
     : null;
 
 const demoLocations = [
@@ -52,6 +46,33 @@ const demoLocations = [
   },
 ];
 
+function getTelegramUserId() {
+  const telegramUser =
+    window.Telegram?.WebApp?.initDataUnsafe?.user;
+
+  if (telegramUser?.id) {
+    return String(telegramUser.id);
+  }
+
+  let localId = localStorage.getItem(
+    "v-kadre-user-id"
+  );
+
+  if (!localId) {
+    localId =
+      "local-" +
+      Math.random().toString(36).slice(2) +
+      Date.now();
+
+    localStorage.setItem(
+      "v-kadre-user-id",
+      localId
+    );
+  }
+
+  return localId;
+}
+
 function App() {
   const [active, setActive] =
     React.useState("home");
@@ -68,9 +89,23 @@ function App() {
   const [likedLocations, setLikedLocations] =
     React.useState({});
 
+  const [savingLike, setSavingLike] =
+    React.useState(null);
+
+  const userId = React.useMemo(
+    () => getTelegramUserId(),
+    []
+  );
+
   React.useEffect(() => {
     loadLocations();
   }, []);
+
+  React.useEffect(() => {
+    if (locations.length > 0) {
+      loadLikes();
+    }
+  }, [locations]);
 
   async function loadLocations() {
     if (!supabase) {
@@ -83,8 +118,9 @@ function App() {
         await supabase
           .from("locations")
           .select(
-            "id, created_at, name, description, emoji, moods, tags, rating, image_url, user_added"
+            "id, name, description, short_description, emoji, tags, rating, photos"
           )
+          .eq("moderation_status", "approved")
           .order("created_at", {
             ascending: false,
           });
@@ -103,8 +139,8 @@ function App() {
         Array.isArray(data) &&
         data.length > 0
       ) {
-        const prepared =
-          data.map((item) => ({
+        const prepared = data.map(
+          (item) => ({
             id: item.id,
 
             title:
@@ -113,11 +149,14 @@ function App() {
 
             description:
               item.description ||
+              item.short_description ||
               "Красивое место для прогулки.",
 
             image:
-              item.image_url ||
-              demoLocations[0].image,
+              Array.isArray(item.photos) &&
+              item.photos.length > 0
+                ? item.photos[0]
+                : demoLocations[0].image,
 
             rating:
               item.rating ?? null,
@@ -129,7 +168,8 @@ function App() {
               Array.isArray(item.tags)
                 ? item.tags
                 : [],
-          }));
+          })
+        );
 
         setLocations(prepared);
       }
@@ -143,21 +183,131 @@ function App() {
     }
   }
 
-  function toggleLike(id) {
-    setLikedLocations((current) => ({
-      ...current,
-      [id]: !current[id],
-    }));
+  async function loadLikes() {
+    if (!supabase) return;
+
+    try {
+      const { data, error } =
+        await supabase
+          .from("location_likes")
+          .select("location_id")
+          .eq(
+            "telegram_id",
+            userId
+          );
+
+      if (error) {
+        console.error(
+          "Ошибка загрузки лайков:",
+          error
+        );
+        return;
+      }
+
+      const likes = {};
+
+      (data || []).forEach(
+        (item) => {
+          likes[item.location_id] = true;
+        }
+      );
+
+      setLikedLocations(likes);
+    } catch (error) {
+      console.error(
+        "Likes error:",
+        error
+      );
+    }
+  }
+
+  async function toggleLike(locationId) {
+    if (
+      savingLike === locationId
+    ) {
+      return;
+    }
+
+    const wasLiked =
+      Boolean(
+        likedLocations[locationId]
+      );
+
+    setSavingLike(locationId);
+
+    setLikedLocations(
+      (current) => ({
+        ...current,
+        [locationId]: !wasLiked,
+      })
+    );
+
+    if (!supabase) {
+      setSavingLike(null);
+      return;
+    }
+
+    try {
+      if (wasLiked) {
+        const { error } =
+          await supabase
+            .from("location_likes")
+            .delete()
+            .eq(
+              "location_id",
+              locationId
+            )
+            .eq(
+              "telegram_id",
+              userId
+            );
+
+        if (error) {
+          throw error;
+        }
+      } else {
+        const { error } =
+          await supabase
+            .from("location_likes")
+            .insert({
+              location_id:
+                locationId,
+              telegram_id:
+                userId,
+            });
+
+        if (error) {
+          throw error;
+        }
+      }
+    } catch (error) {
+      console.error(
+        "Ошибка сохранения лайка:",
+        error
+      );
+
+      setLikedLocations(
+        (current) => ({
+          ...current,
+          [locationId]:
+            wasLiked,
+        })
+      );
+    } finally {
+      setSavingLike(null);
+    }
   }
 
   function isLiked(id) {
-    return Boolean(likedLocations[id]);
+    return Boolean(
+      likedLocations[id]
+    );
   }
 
   const likesCount =
-    Object.values(likedLocations).filter(
-      Boolean
-    ).length;
+    Object.values(
+      likedLocations
+    ).filter(Boolean).length;
 
   return (
     <>
@@ -305,9 +455,7 @@ function App() {
 
         .loading {
           padding: 40px 10px;
-
           text-align: center;
-
           color: #8b847c;
         }
 
@@ -452,6 +600,7 @@ function App() {
         .tags {
           display: flex;
           flex-wrap: wrap;
+
           gap: 6px;
 
           margin-bottom: 14px;
@@ -522,8 +671,7 @@ function App() {
           width: 90px;
           height: 90px;
 
-          margin:
-            0 auto 15px;
+          margin: 0 auto 15px;
 
           display: grid;
           place-items: center;
@@ -565,7 +713,6 @@ function App() {
 
         .stat strong {
           display: block;
-
           font-size: 21px;
         }
 
@@ -799,7 +946,6 @@ function App() {
 
           {active === "home" && (
             <>
-
               <section className="hero">
 
                 <div className="eyebrow">
@@ -825,14 +971,11 @@ function App() {
               </h2>
 
               {loading ? (
-
                 <div className="loading">
                   Загружаем локации
                   из Supabase…
                 </div>
-
               ) : (
-
                 <div className="grid">
 
                   {locations.map(
@@ -842,6 +985,10 @@ function App() {
                         isLiked(
                           location.id
                         );
+
+                      const busy =
+                        savingLike ===
+                        location.id;
 
                       return (
                         <article
@@ -873,6 +1020,7 @@ function App() {
                                   ? "likeButton liked"
                                   : "likeButton"
                               }
+                              disabled={busy}
                               onClick={() =>
                                 toggleLike(
                                   location.id
@@ -931,7 +1079,6 @@ function App() {
 
                             {location.tags
                               .length > 0 && (
-
                               <div className="tags">
 
                                 {location.tags
@@ -947,7 +1094,6 @@ function App() {
                                   )}
 
                               </div>
-
                             )}
 
                             <div className="cardActions">
@@ -969,6 +1115,7 @@ function App() {
                                     ? "smallLike liked"
                                     : "smallLike"
                                 }
+                                disabled={busy}
                                 onClick={() =>
                                   toggleLike(
                                     location.id
@@ -990,7 +1137,6 @@ function App() {
                   )}
 
                 </div>
-
               )}
 
             </>
@@ -1052,7 +1198,6 @@ function App() {
               </div>
 
             </section>
-
           )}
 
         </main>
@@ -1139,6 +1284,7 @@ function App() {
                 <div className="modalHeader">
 
                   <div>
+
                     <div className="emoji">
                       {
                         selectedLocation.emoji ||
@@ -1160,6 +1306,7 @@ function App() {
                         }
                       </strong>
                     )}
+
                   </div>
 
                   <button
@@ -1208,7 +1355,6 @@ function App() {
             </div>
 
           </div>
-
         )}
 
       </div>
