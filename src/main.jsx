@@ -229,6 +229,10 @@ function App() {
     Object.values(likedLocations).filter(
       Boolean
     ).length;
+  
+  const likedLocationList = locations.filter(
+  (location) => likedLocations[location.id]
+);
 
   return (
     <>
@@ -1098,6 +1102,73 @@ function App() {
                     </span>
                   </div>
 
+                  {likedLocationList.length > 0 && (
+  <div style={{ marginTop: "24px" }}>
+    <h2
+      style={{
+        margin: "0 0 14px",
+        fontSize: "22px",
+        textAlign: "left",
+      }}
+    >
+      ❤️ Мои лайки
+    </h2>
+
+    <div
+      style={{
+        display: "grid",
+        gap: "12px",
+      }}
+    >
+      {likedLocationList.map((location) => (
+        <button
+          key={location.id}
+          onClick={() =>
+            setSelectedLocation(location)
+          }
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+            width: "100%",
+            padding: "10px",
+            border: 0,
+            borderRadius: "18px",
+            background: "#f5f3ef",
+            textAlign: "left",
+            cursor: "pointer",
+          }}
+        >
+          <img
+            src={location.image}
+            alt={location.title}
+            style={{
+              width: "65px",
+              height: "65px",
+              borderRadius: "14px",
+              objectFit: "cover",
+            }}
+          />
+
+          <div>
+            <strong>{location.title}</strong>
+
+            <div
+              style={{
+                marginTop: "4px",
+                color: "#e54848",
+                fontSize: "14px",
+              }}
+            >
+              ♥ Понравилось
+            </div>
+          </div>
+        </button>
+      ))}
+    </div>
+  </div>
+)}
+                  
                   <div className="stat">
                     <strong>
                       {likesCount}
