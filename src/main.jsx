@@ -206,6 +206,188 @@ const [savingLocation, setSavingLocation] =
   }
 
   if (!newLocation.name.trim()) {
+    alert("Введите название места");
+    return;
+  }
+
+  setSavingLocation(true);
+
+  try {
+    let imageUrl = "";
+
+    // Загружаем выбранное фото в Supabase Storage
+    if (newLocation.imageFile) {
+      const file = newLocation.imageFile;
+
+      const extension =
+        file.name.split(".").pop() || "jpg";
+
+      const fileName =
+        `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}.${extension}`;
+
+      const filePath =
+        `locations/${fileName}`;
+
+      const { error: uploadError } =
+        await supabase.storage
+          .from("location-images")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type,
+          });
+
+      if (uploadError) {
+        console.error(
+          "Ошибка загрузки фото:",
+          uploadError
+        );
+
+        alert(
+          "Не удалось загрузить фото: " +
+            uploadError.message
+        );
+
+        return;
+      }
+
+      const { data: publicUrlData } =
+        supabase.storage
+          .from("location-images")
+          .getPublicUrl(filePath);
+
+      imageUrl =
+        publicUrlData.publicUrl;
+    }
+
+    // Если фото не выбрали
+    if (!imageUrl) {
+      imageUrl =
+        demoLocations[0].image;
+    }
+
+    const tags =
+      newLocation.tags
+        .split(",")
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+
+    // Сохраняем локацию
+    const { data, error } =
+      await supabase
+        .from("locations")
+        .insert({
+          name:
+            newLocation.name.trim(),
+
+          description:
+            newLocation.description.trim() ||
+            "Красивое место для прогулки.",
+
+          emoji:
+            newLocation.emoji.trim() ||
+            "📍",
+
+          tags,
+
+          rating:
+            Number(newLocation.rating) || 5,
+
+          image_url: imageUrl,
+
+          user_added: true,
+        })
+        .select()
+        .single();
+
+    if (error) {
+      console.error(
+        "Ошибка сохранения локации:",
+        error
+      );
+
+      alert(
+        "Не удалось сохранить локацию: " +
+          error.message
+      );
+
+      return;
+    }
+
+    // Добавляем новую локацию сразу на экран
+    if (data) {
+      const prepared = {
+        id: data.id,
+
+        title:
+          data.name ||
+          "Без названия",
+
+        description:
+          data.description ||
+          "Красивое место для прогулки.",
+
+        image:
+          data.image_url ||
+          demoLocations[0].image,
+
+        rating:
+          data.rating ?? null,
+
+        emoji:
+          data.emoji ||
+          "📍",
+
+        tags:
+          Array.isArray(data.tags)
+            ? data.tags
+            : [],
+      };
+
+      setLocations((current) => [
+        prepared,
+        ...current,
+      ]);
+    }
+
+    // Очищаем форму
+    setNewLocation({
+      name: "",
+      description: "",
+      emoji: "📍",
+      tags: "",
+      rating: "5",
+      image_url: "",
+      imageFile: null,
+    });
+
+    setShowAddLocation(false);
+
+    alert(
+      "Локация добавлена ❤️"
+    );
+  } catch (error) {
+    console.error(
+      "Ошибка добавления локации:",
+      error
+    );
+
+    alert(
+      "Произошла ошибка при добавлении"
+    );
+  } finally {
+    setSavingLocation(false);
+  }
+}
+
+  if (!supabase) {
+    alert("Supabase не подключён");
+    return;
+  }
+
+  if (!newLocation.name.trim()) {
     alert("Напиши название места");
     return;
   }
