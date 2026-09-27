@@ -273,7 +273,7 @@ const [savingLocation, setSavingLocation] =
       emoji: "📍",
       tags: "",
       rating: "5",
-      image_url: "",
+      image_url: null,
     });
 
     setShowAddLocation(false);
@@ -976,7 +976,7 @@ const [savingLocation, setSavingLocation] =
             </div>
 
             <div className="caption">
-              места • люди • моменты
+              места • моменты
             </div>
           </div>
 
@@ -1010,7 +1010,7 @@ const [savingLocation, setSavingLocation] =
 
                 <p>
                   Локации для прогулок,
-                  свиданий, вдохновения
+                  вдохновения
                   и красивых фотографий.
                 </p>
 
@@ -1442,18 +1442,86 @@ const [savingLocation, setSavingLocation] =
           style={inputStyle}
         />
 
-        <input
-          placeholder="Ссылка на фото"
-          value={newLocation.image_url}
-          onChange={(event) =>
-            setNewLocation({
-              ...newLocation,
-              image_url:
-                event.target.value,
-            })
-          }
-          style={inputStyle}
-        />
+       <label
+  style={{
+    display: "block",
+    width: "100%",
+    padding: "16px",
+    marginBottom: "10px",
+    borderRadius: "14px",
+    background: "#f0ece6",
+    textAlign: "center",
+    fontWeight: 700,
+    cursor: "pointer",
+  }}
+>
+  📷 Выбрать фото из галереи
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(event) => {
+      const file = event.target.files?.[0];
+
+      if (!file) return;
+
+      setNewLocation({
+        ...newLocation,
+        imageFile: file,
+      });
+    }}
+    style={{
+      display: "none",
+    }}
+  />
+</label>
+
+{newLocation.imageFile && (
+  <div
+    style={{
+      marginBottom: "10px",
+      borderRadius: "14px",
+      overflow: "hidden",
+    }}
+  >
+    <img
+      src={URL.createObjectURL(
+        newLocation.imageFile
+      )}
+      alt="Выбранное фото"
+      style={{
+        display: "block",
+        width: "100%",
+        maxHeight: "220px",
+        objectFit: "cover",
+      }}
+    />
+  </div>
+)}
+
+  📷 Выбрать фото из галереи
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(event) => {
+      const file = event.target.files?.[0];
+
+      if (!file) return;
+
+      const imageUrl =
+        URL.createObjectURL(file);
+
+      setNewLocation({
+        ...newLocation,
+        image_url: imageUrl,
+      });
+    }}
+    style={{
+      display: "none",
+    }}
+  />
+</label>
 
         <input
           type="number"
