@@ -128,7 +128,183 @@ const [savingLocation, setSavingLocation] =
   }
 }
 
-  async function loadLocations() {
+ async function addLocation() {
+  if (!supabase) {
+    alert("Supabase не подключён");
+    return;
+  }
+
+  if (!newLocation.name.trim()) {
+    alert("Введите название места");
+    return;
+  }
+
+  setSavingLocation(true);
+
+  try {
+    let imageUrl = "";
+
+    // 1. Загружаем фото в Supabase Storage
+    if (newLocation.imageFile) {
+      const file = newLocation.imageFile;
+
+      const fileExt =
+        file.name.split(".").pop() || "jpg";
+
+      const fileName =
+        `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}.${fileExt}`;
+
+      const filePath =
+        `locations/${fileName}`;
+
+      const { error: uploadError } =
+        await supabase.storage
+          .from("location-images")
+          .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: false,
+            contentType: file.type,
+          });
+
+      if (uploadError) {
+        console.error(
+          "Ошибка загрузки фото:",
+          uploadError
+        );
+
+        alert(
+          "Не удалось загрузить фото: " +
+          uploadError.message
+        );
+
+        return;
+      }
+
+      // 2. Получаем постоянную ссылку
+      const { data: publicData } =
+        supabase.storage
+          .from("location-images")
+          .getPublicUrl(filePath);
+
+      imageUrl =
+        publicData?.publicUrl || "";
+    }
+
+    // 3. Если фото не выбрали — используем стандартное
+    if (!imageUrl) {
+      imageUrl = demoLocations[0].image;
+    }
+
+    // 4. Превращаем строку тегов в массив
+    const tags = newLocation.tags
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+
+    // 5. Сохраняем локацию в таблицу
+    const { data, error } =
+      await supabase
+        .from("locations")
+        .insert({
+          name: newLocation.name.trim(),
+
+          description:
+            newLocation.description.trim(),
+
+          emoji:
+            newLocation.emoji.trim() || "📍",
+
+          tags,
+
+          rating:
+            Number(newLocation.rating) || 5,
+
+          image_url: imageUrl,
+
+          user_added: true,
+        })
+        .select()
+        .single();
+
+    if (error) {
+      console.error(
+        "Ошибка создания локации:",
+        error
+      );
+
+      alert(
+        "Не удалось сохранить локацию: " +
+        error.message
+      );
+
+      return;
+    }
+
+    // 6. Сразу показываем новую локацию
+    if (data) {
+      const prepared = {
+        id: data.id,
+
+        title:
+          data.name || "Без названия",
+
+        description:
+          data.description ||
+          "Красивое место для прогулки.",
+
+        image:
+          data.image_url ||
+          demoLocations[0].image,
+
+        rating:
+          data.rating ?? null,
+
+        emoji:
+          data.emoji || "📍",
+
+        tags:
+          Array.isArray(data.tags)
+            ? data.tags
+            : [],
+      };
+
+      setLocations((current) => [
+        prepared,
+        ...current,
+      ]);
+    }
+
+    // 7. Очищаем форму
+    setNewLocation({
+      name: "",
+      description: "",
+      emoji: "📍",
+      tags: "",
+      rating: "5",
+      image_url: "",
+      imageFile: null,
+    });
+
+    setShowAddLocation(false);
+
+    alert("Локация добавлена ❤️");
+
+  } catch (error) {
+    console.error(
+      "Ошибка добавления локации:",
+      error
+    );
+
+    alert(
+      "Произошла ошибка при добавлении"
+    );
+
+  } finally {
+    setSavingLocation(false);
+  }
+}
     if (!supabase) {
       setLoading(false);
       return;
