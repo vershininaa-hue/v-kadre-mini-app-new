@@ -1442,18 +1442,42 @@ const [savingLocation, setSavingLocation] =
           style={inputStyle}
         />
 
-        <input
-          placeholder="Ссылка на фото"
-          value={newLocation.image_url}
-          onChange={(event) =>
-            setNewLocation({
-              ...newLocation,
-              image_url:
-                event.target.value,
-            })
-          }
-          style={inputStyle}
-        />
+        <label
+  style={{
+    display: "block",
+    width: "100%",
+    padding: "16px",
+    marginBottom: "10px",
+    borderRadius: "14px",
+    background: "#f0ece6",
+    textAlign: "center",
+    fontWeight: 700,
+    cursor: "pointer",
+  }}
+>
+  📷 Выбрать фото из галереи
+
+  <input
+    type="file"
+    accept="image/*"
+    onChange={(event) => {
+      const file = event.target.files?.[0];
+
+      if (!file) return;
+
+      const imageUrl =
+        URL.createObjectURL(file);
+
+      setNewLocation({
+        ...newLocation,
+        image_url: imageUrl,
+      });
+    }}
+    style={{
+      display: "none",
+    }}
+  />
+</label>
 
         <input
           type="number"
